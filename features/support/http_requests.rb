@@ -44,7 +44,9 @@ def do_http_request(url, method = :get, options = {}, &block)
     user: user,
     password: password,
     headers: headers,
-    payload: options[:payload]
+    payload: options[:payload],
+    open_timeout: 10,
+    timeout: 10
   ).execute &block
 rescue RestClient::Unauthorized => e
   raise "Unable to fetch '#{url}' due to '#{e.message}'. Maybe you need to set AUTH_USERNAME and AUTH_PASSWORD?"

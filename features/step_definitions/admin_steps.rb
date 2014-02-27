@@ -18,7 +18,7 @@ Then /^I should be on the admin home page$/ do
 end
 
 Then /^I should be on the admin post-login page$/ do
-  page.has_selector?(".alert-success").should == true, page.text # Signed in successfully message
-  page.has_text?("Signed in as ").should == true, page.text #page has "Signed in as X" message
-  page.has_text?("Sign out").should == true, page.text # page has a logout link
+  page.has_selector?(".alert-success").should == true # Signed in successfully message
+  page.has_text?("Signed in as ").should == true #page has "Signed in as X" message
+  page.has_text?("Sign out").should == true # page has a logout link
 end

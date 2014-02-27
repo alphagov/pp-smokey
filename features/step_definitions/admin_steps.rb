@@ -13,12 +13,12 @@ When /^I visit the admin home page$/ do
 end
 
 Then /^I should be on the admin home page$/ do
-  page.has_selector?("#user_username").should == true # username input field
-  page.has_selector?("#user_password").should == true # password input field
+  page.has_selector?("#user_username").should eq(true) # username input field
+  page.has_selector?("#user_password").should eq(true) # password input field
 end
 
 Then /^I should be on the admin post-login page$/ do
-  page.has_selector?(".alert-success").should == true # Signed in successfully message
-  page.has_text?("Signed in as ").should == true #page has "Signed in as X" message
-  page.has_text?("Sign out").should == true # page has a logout link
+  page.has_selector?(".alert-success").should eq(true),  page.text # Signed in successfully message
+  page.has_text?("Signed in as ").should eq(true), page.text #page has "Signed in as X" message
+  page.has_text?("Sign out").should eq(true), page.text # page has a logout link
 end

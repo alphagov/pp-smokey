@@ -6,8 +6,8 @@ def head_request(url, options = {})
   do_http_request(url, :head, options)
 end
 
-def get_request(url, options = {})
-  do_http_request(url, :get, options)
+def get_request(url, options = {}, &block)
+  do_http_request(url, :get, options, &block)
 end
 
 def do_http_request(url, method = :get, options = {}, &block)
@@ -37,6 +37,11 @@ def do_http_request(url, method = :get, options = {}, &block)
   if options[:host_header]
     headers["Host"] = options[:host_header]
   end
+  if options[:http_headers]
+    options[:http_headers].each do |name, value|
+      headers[name] = value
+    end
+  end
 
   RestClient::Request.new(
     url: url,
@@ -46,15 +51,11 @@ def do_http_request(url, method = :get, options = {}, &block)
     headers: headers,
     payload: options[:payload],
     open_timeout: 10,
-    timeout: 10
-  ).execute &block
-rescue RestClient::Unauthorized => e
-  raise "Unable to fetch '#{url}' due to '#{e.message}'. Maybe you need to set AUTH_USERNAME and AUTH_PASSWORD?"
-rescue RestClient::Exception => e
-  finished_at = Time.now
-  message = ["Unable to fetch '#{url}'"]
-  message += ["  Exception: '#{e}'"]
-  message += ["  Response headers: #{e.response.headers.inspect if e.response}"]
-  message += ["  Response time in seconds: #{finished_at - started_at}"]
-  raise message.join("\n")
-end
+    timeout: 10,
+    max_redirects: 0
+  ).execute(&block)
+
+
+  rescue RestClient::Exception => e
+    e.response
+  end

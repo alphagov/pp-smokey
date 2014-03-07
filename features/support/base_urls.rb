@@ -22,3 +22,8 @@ def application_base_url(app_name)
     raise "Application '#{app_name}' not recognised, unable to boot it up"
   end
 end
+
+def replace_env_host(url)
+  url.gsub(/{PP_APP_DOMAIN}/, app_domain)
+end
+

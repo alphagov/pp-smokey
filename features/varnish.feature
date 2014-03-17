@@ -70,9 +70,11 @@ Feature: varnish
   # Stagecraft routing
 
   @normal
-  Scenario: I can access Stagecraft data-sets API without a trailing slash
+  Scenario: I can route a request to Stagecraft data-sets API without a trailing slash
     When I GET https://stagecraft.{PP_APP_DOMAIN}/data-sets
-    Then I should receive an HTTP 200
+    Then I should receive an HTTP 403
+    # Requires a secret bearer token - getting a 403 is enough to know we
+    # routed right through to the app.
 
 
   # BUG: see https://www.pivotaltracker.com/story/show/67096896

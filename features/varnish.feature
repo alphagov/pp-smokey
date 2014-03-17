@@ -87,11 +87,10 @@ Feature: varnish
     Then I should receive an HTTP 200
 
 
-  # BUG: see https://www.pivotaltracker.com/story/show/67097186
-  @normal, @knownfailing
+  @normal
   Scenario: I can access Stagecraft admin UI without a trailing slash
     When I GET https://stagecraft.{PP_APP_DOMAIN}/admin
-    Then I should receive an HTTP 301 redirect to /admin/
+    Then I should receive an HTTP 301 redirect to https://stagecraft.{PP_APP_DOMAIN}/admin/
 
 
   # Admin UI routing

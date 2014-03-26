@@ -1,0 +1,2 @@
+---
+default: --tags ~@knownfailing --tags ~@pending --format pretty

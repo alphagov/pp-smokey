@@ -106,3 +106,17 @@ Feature: varnish
   Scenario: I can access the admin application with a trailing slash
     When I GET https://admin.{PP_APP_DOMAIN}/not-authorized/
     Then I should receive an HTTP 301 redirect to /not-authorized
+
+  # Purging cache items
+
+  @normal
+  Scenario: I can PURGE a stagecraft URL directly from Varnish
+    Given I have the HTTP header "Host: stagecraft.{PP_APP_DOMAIN}"
+    When I PURGE http://frontend-app-1:7999/a-url
+    Then I should receive an HTTP 200
+
+  @normal
+  Scenario: I cannot PURGE a stagecraft URL when requesting through Nginx
+    Given I have the HTTP header "Host: stagecraft.{PP_APP_DOMAIN}"
+    When I PURGE https://stagecraft.{PP_APP_DOMAIN}/a-url
+    Then I should receive an HTTP 403

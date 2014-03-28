@@ -76,9 +76,7 @@ Feature: varnish
     # Requires a secret bearer token - getting a 403 is enough to know we
     # routed right through to the app.
 
-
-  # BUG: see https://www.pivotaltracker.com/story/show/67096896
-  @normal, @knownfailing
+  @normal
   Scenario: I can access Stagecraft data-sets API with a trailing slash
     When I GET https://stagecraft.{PP_APP_DOMAIN}/data-sets/
     Then I should receive an HTTP 301 redirect to /data-sets

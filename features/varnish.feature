@@ -82,6 +82,11 @@ Feature: varnish
     Then I should receive an HTTP 301 redirect to https://stagecraft.{PP_APP_DOMAIN}/data-sets
 
   @normal
+  Scenario: I can access Stagecraft data-sets API with a trailing slash and query string
+    When I GET https://stagecraft.{PP_APP_DOMAIN}/data-sets/?data-group=aaa
+    Then I should receive an HTTP 301 redirect to https://stagecraft.{PP_APP_DOMAIN}/data-sets?data-group=aaa
+
+  @normal
   Scenario: I can access Stagecraft admin UI with a trailing slash
     When I GET https://stagecraft.{PP_APP_DOMAIN}/admin/
     Then I should receive an HTTP 200

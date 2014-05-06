@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# encoding: utf-8
+
 import sys
 import json
 from collections import namedtuple
@@ -7,6 +10,14 @@ from operator import add
 Step = namedtuple('Step', 'name, status')
 Scenario = namedtuple('Scenario', 'name, steps')
 Feature = namedtuple('Feature', 'name, uri, scenarios')
+
+
+def main():
+    feature_name, json_file = parse_args(sys.argv)
+
+    feature = get_feature(load_json(json_file), feature_name)
+    log_result_and_exit(feature)
+
 
 # Utils
 def ascii(value):
@@ -27,9 +38,9 @@ def get_feature(smokey_json, feature_name):
     for feature_json in smokey_json:
         if feature_json['uri'] == get_feature_uri(feature_name):
             return Feature(
-                    ascii(feature_json['name']),
-                    ascii(feature_json['uri']),
-                    map(get_scenario, find_scenarios(feature_json)))
+                ascii(feature_json['name']),
+                ascii(feature_json['uri']),
+                map(get_scenario, find_scenarios(feature_json)))
 
 
 def get_feature_uri(feature_name):
@@ -43,8 +54,8 @@ def find_scenarios(feature_json):
 
 def get_scenario(scenario_json):
     return Scenario(
-            ascii(scenario_json['name']),
-            map(get_step, scenario_json['steps']))
+        ascii(scenario_json['name']),
+        map(get_step, scenario_json['steps']))
 
 
 def get_step(step):
@@ -64,34 +75,35 @@ def count_passing_steps(feature):
 
 def count_steps_by_status(feature, status):
     return len([step for step in get_feature_steps(feature)
-            if step.status == status])
+               if step.status == status])
 
 
 def get_feature_steps(feature):
     return reduce(add,
-            [scenario.steps for scenario in feature.scenarios])
+                  [scenario.steps for scenario in feature.scenarios])
 
 
 # Rendering as text
 def feature_message(feature):
-    return '{failing} failed, {passing} passed;\n{name} ({uri})\n{scenarios}'.format(
-        failing=count_failing_steps(feature),
-        passing=count_passing_steps(feature),
-        name=feature.name,
-        uri=feature.uri,
-        scenarios="\n".join(map(scenario_message, feature[2])))
+    return ('{failing} failed, {passing} passed;\n'
+            '{name} ({uri})\n{scenarios}').format(
+                failing=count_failing_steps(feature),
+                passing=count_passing_steps(feature),
+                name=feature.name,
+                uri=feature.uri,
+                scenarios="\n".join(map(scenario_message, feature[2])))
 
 
 def scenario_message(scenario):
     return "  Scenario: {name}\n{steps}".format(
-            name=scenario.name,
-            steps="\n".join(map(step_message, scenario.steps)))
+        name=scenario.name,
+        steps="\n".join(map(step_message, scenario.steps)))
 
 
 def step_message(step):
     return '    Step: [{status}] {name}'.format(
-            name=step.name,
-            status='PASS' if step.status == "passed" else 'FAIL')
+        name=step.name,
+        status='PASS' if step.status == "passed" else 'FAIL')
 
 
 # Status message for Sensu
@@ -102,14 +114,5 @@ def log_result_and_exit(feature):
     print(message)
     sys.exit(exit_status)
 
-
-def main():
-    feature_name, json_file = parse_args(sys.argv)
-   
-    feature = get_feature(load_json(json_file), feature_name)
-    log_result_and_exit(feature)
-
-
 if __name__ == '__main__':
     main()
-

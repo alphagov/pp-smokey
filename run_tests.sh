@@ -6,4 +6,4 @@ echo '> rbenv install $(cat .ruby-version)'
 echo
 
 bundle install
-bundle exec rake
+bundle exec cucumber

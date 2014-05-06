@@ -11,4 +11,4 @@ if [ ! -f .ruby-version ]; then
 fi
 
 bundle install --path "${HOME}/bundles/${JOB_NAME}" --deployment --quiet
-bundle exec rake
+bundle exec cucumber --format json --out ${WORKSPACE}/results.json

@@ -13,7 +13,8 @@ Feature = namedtuple('Feature', 'name, uri, scenarios')
 
 
 def main():
-    feature_name, json_file = parse_args(sys.argv)
+    assert len(sys.argv) == 3, "Usage: {} <feature name> <results file.json>"
+    feature_name, json_file = sys.argv[1], sys.argv[2]
 
     feature = get_feature(load_json(json_file), feature_name)
     log_result_and_exit(feature)
@@ -22,10 +23,6 @@ def main():
 # Utils
 def ascii(value):
     return value.encode('ascii', 'ignore')
-
-
-def parse_args(args):
-    return args[1], args[2]
 
 
 def load_json(json_file):

@@ -1,4 +1,4 @@
-Feature: admin
+Feature: admin_uploader
 
   @normal
   Scenario: Quickly loading the admin home page

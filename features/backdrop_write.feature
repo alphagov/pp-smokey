@@ -28,11 +28,11 @@ Feature: backdrop_write
     Then I should receive an HTTP 401
 
   @normal
-  Scenario: I cannot PUT to backdrop
+  Scenario: I can PUT an empty JSON list to backdrop (empty functionality)
     Given I have the JSON data []
       And I have the HTTP header "Authorization: Bearer qwertyuiop"
-    When I PUT https://www.{PP_APP_DOMAIN}/data/test/test?limit=1
-    Then I should receive an HTTP 405
+    When I PUT https://www.{PP_APP_DOMAIN}/data/test/test
+    Then I should receive an HTTP 200
 
   @normal
   Scenario: I cannot DELETE resources in backdrop

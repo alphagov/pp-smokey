@@ -1,4 +1,3 @@
-@knownfailing
 Feature: admin_uploader
 
   @normal

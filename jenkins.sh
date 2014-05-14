@@ -12,8 +12,10 @@ fi
 
 bundle install --path "${HOME}/bundles/${JOB_NAME}" --deployment --quiet
 
-if [ "$PP_EXCLUDE_PATTERN" != "" ]; then
-  EXCLUDE_FEATURE="-e '${PP_EXCLUDE_PATTERN}'"
+SMOKEY_PROFILE="default"
+
+if [ $PP_APP_DOMAIN = "staging.performance.service.gov.uk" ]; then
+  SMOKEY_PROFILE="staging"
 fi
 
-bundle exec cucumber --format json --out ${WORKSPACE}/results.json $EXCLUDE_FEATURE
+bundle exec cucumber --format json --out ${WORKSPACE}/results.json --profile $SMOKEY_PROFILE

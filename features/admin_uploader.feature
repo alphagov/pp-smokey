@@ -8,6 +8,7 @@ Feature: admin_uploader
     Then the elapsed time should be less than 1 seconds
 
   @normal
+  @not_on_staging
   Scenario: Can log in
     Given the "admin" application has booted
     When I try to login as a valid admin user

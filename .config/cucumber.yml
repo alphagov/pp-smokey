@@ -1,2 +1,3 @@
 ---
 default: --tags ~@knownfailing --tags ~@pending --format pretty
+staging: --tags ~@knownfailing --tags ~@pending --tags ~@not_on_staging --format pretty

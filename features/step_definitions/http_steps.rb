@@ -24,6 +24,10 @@ Then /^I should receive an HTTP (30[12]) redirect to (.*)$/ do |status, url|
   @response.headers[:location].should == url
 end
 
+Then /^I should see a strong ETag$/ do
+  @response.headers[:etag].should match /"[a-f0-9]{16}"/
+end
+
 
 def headers
   @headers

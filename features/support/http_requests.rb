@@ -2,10 +2,6 @@ require 'net/http'
 require 'rest_client'
 require 'cgi'
 
-def head_request(url, options = {})
-  do_http_request(url, :head, options)
-end
-
 def get_request(url, options = {}, &block)
   do_http_request(url, :get, options, &block)
 end

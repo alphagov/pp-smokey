@@ -14,6 +14,11 @@ When /^I (GET|POST|PUT|DELETE) (.*)$/ do |method, url|
   end
 end
 
+Then /^I should be on a page with a URL that begins (.*)$/ do |url|
+  url = replace_env_host(url)
+  page.current_url.start_with?(url).should == true
+end
+
 Then /^I should receive an HTTP (\d{3})$/ do |status|
   @response.code.to_i.should == status.to_i
 end

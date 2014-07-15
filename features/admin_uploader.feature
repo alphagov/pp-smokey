@@ -12,7 +12,7 @@ Feature: admin_uploader
   @normal
   @not_on_staging
   Scenario: Can log in
-    When I try to login as a valid admin user
+    When I try to login to Signon from https://admin.{PP_APP_DOMAIN}/sign-in
     Then I should be on the admin post-login page
 
   # Admin UI routing

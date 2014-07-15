@@ -1,3 +1,6 @@
+# Deprecated: these tests check the admin.backdrop uploader
+# New tests should be added to the admin_app feature and this
+# file should be deleted "soon".
 Feature: admin_uploader
 
   @normal

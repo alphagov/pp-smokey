@@ -30,5 +30,6 @@ end
 def replace_env_host(url)
   url.gsub(/{PP_APP_DOMAIN}/, app_domain)
      .gsub(/{PP_FULL_APP_DOMAIN}/, full_app_domain)
+     .gsub(/{GOVUK_APP_DOMAIN}/, govuk_app_domain)
 end
 

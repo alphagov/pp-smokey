@@ -24,6 +24,11 @@ Then /^I should receive an HTTP (30[12]) redirect to (.*)$/ do |status, url|
   @response.headers[:location].should == url
 end
 
+Then /^I should receive an HTTP redirect beginning with (.*)$/ do |url|
+  url = replace_env_host(url)
+  @response.headers[:location].start_with?(url).should == true
+end
+
 Then /^I should see a strong ETag$/ do
   @response.headers[:etag].should match /"[A-Za-z0-9\+\/]{22,24}[=]{0,2}"/
 end
@@ -35,7 +40,7 @@ end
 
 def add_header key, value
   @headers ||= []
-  @headers << [key, value] 
+  @headers << [key, value]
 end
 
 def options

@@ -14,6 +14,11 @@ When /^I (GET|POST|PUT|DELETE) (.*)$/ do |method, url|
   end
 end
 
+Then /^I should be on a page with a URL that begins (.*)$/ do |url|
+  url = replace_env_host(url)
+  page.current_url.start_with?(url).should == true
+end
+
 Then /^I should receive an HTTP (\d{3})$/ do |status|
   @response.code.to_i.should == status.to_i
 end
@@ -22,6 +27,11 @@ Then /^I should receive an HTTP (30[12]) redirect to (.*)$/ do |status, url|
   url = replace_env_host(url)
   @response.code.to_i.should == status.to_i
   @response.headers[:location].should == url
+end
+
+Then /^I should receive an HTTP redirect beginning with (.*)$/ do |url|
+  url = replace_env_host(url)
+  @response.headers[:location].start_with?(url).should == true
 end
 
 Then /^I should see a strong ETag$/ do
@@ -35,7 +45,7 @@ end
 
 def add_header key, value
   @headers ||= []
-  @headers << [key, value] 
+  @headers << [key, value]
 end
 
 def options

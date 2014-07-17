@@ -1,8 +1,10 @@
-When /^I try to login as a valid admin user$/ do
+When /^I try to login to Signon from (.*)$/ do |url|
   assert ENV["SIGNON_USERNAME"] && ENV["SIGNON_PASSWORD"], "Please ensure that the signon user credentials are available in the environment"
 
-  # Need to do it this way to comply with CSRF protection
-  visit "#{admin_base_url}sign-in"
+  # We need to actually visit the URL to make the CSRF protection happy
+  url = replace_env_host(url)
+  visit url
+
   fill_in "user_email", :with => ENV["SIGNON_USERNAME"]
   fill_in "user_password", :with =>ENV["SIGNON_PASSWORD"]
   click_button "Sign in"

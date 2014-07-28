@@ -24,3 +24,7 @@ Then /^I should be on the admin post-login page$/ do
   page.has_text?("Signed in as ").should eq(true), page.text #page has "Signed in as X" message
   page.has_text?("Sign out").should eq(true), page.text # page has a logout link
 end
+
+Then /^I should see a list of data sets containing (.*)$/ do |data_set_name|
+  page.find(:css, ".data-set-list > li > .data-set-name").text.should == data_set_name
+end

@@ -2,6 +2,7 @@ When /^I try to login to Signon from (.*)$/ do |url|
   assert ENV["SIGNON_USERNAME"] && ENV["SIGNON_PASSWORD"], "Please ensure that the signon user credentials are available in the environment"
 
   # We need to actually visit the URL to make the CSRF protection happy
+  p url
   url = replace_env_host(url)
   visit url
 

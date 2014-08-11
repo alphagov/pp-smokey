@@ -26,5 +26,5 @@ Then /^I should be on the admin post-login page$/ do
 end
 
 Then /^I should see a list of data sets containing (.*)$/ do |data_set_name|
-  page.find(:css, ".data-set-list > li > .data-set-name").text.should == data_set_name
+  page.find(:css, ".data-set-list > li > .data-set-group-and-type").text.should == data_set_name
 end

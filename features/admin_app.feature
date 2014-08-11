@@ -18,4 +18,4 @@ Feature: admin app
   @not_on_staging
   Scenario: Can see a list of data sets
     When I try to login to Signon from https://admin-beta.{PP_APP_DOMAIN}/login
-    Then I should see a list of data sets containing test
+    Then I should see a list of data sets containing test test

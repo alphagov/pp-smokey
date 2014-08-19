@@ -26,5 +26,5 @@ Then /^I should be on the admin post-login page$/ do
 end
 
 Then /^I should see a list of (.*) data sets containing (.*) data type$/ do |data_set_group_name, data_set_type_name|
-  page.find(:css, "li[data-name='#{data_set_group_name}'] > ul.data-set-list > li > .data-set-type").text.should == data_set_type_name
+  page.find(:css, "li[data-name='#{data_set_group_name}'] > ul.data-set-list > li .data-set-type").text.should == data_set_type_name
 end

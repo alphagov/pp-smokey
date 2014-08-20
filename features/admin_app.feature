@@ -19,3 +19,10 @@ Feature: admin app
   Scenario: Can see a list of data sets
     When I try to login to Signon from https://admin-beta.{PP_APP_DOMAIN}/
     Then I should see a list of test data sets containing test data type
+
+  @normal
+  @not_on_staging
+  Scenario: Can see a list of data sets
+    When I try to login to Signon from https://admin-beta.{PP_APP_DOMAIN}/
+    And I upload fixtures/test-data.csv to the test data type in the test data group
+    Then I should see a success message for the test data type in the test data group

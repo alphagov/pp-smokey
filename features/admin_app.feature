@@ -1,5 +1,9 @@
 Feature: admin app
 
+  Scenario: Admin app is up on staging
+    When I GET https://admin-beta.{PP_APP_DOMAIN}/
+    Then I should receive an HTTP 302
+
   @normal
   @not_on_staging
   Scenario: Quickly being redirected to Sign-on-o-tron

@@ -30,3 +30,10 @@ Feature: admin app
     When I try to login to Signon from https://admin-beta.{PP_APP_DOMAIN}/
     And I upload fixtures/test-data.csv to the test data type in the test data group
     Then I should see a success message for the test data type in the test data group
+
+  @normal
+  @not_on_staging
+  Scenario: Can see the dashboard administration page
+    When I try to login to Signon from https://admin-beta.{PP_APP_DOMAIN}/
+    And I follow the "Administer dashboards" link
+    Then I should be on the dashboard administration page

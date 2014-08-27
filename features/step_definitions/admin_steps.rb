@@ -38,3 +38,11 @@ Then /^I should see a success message for the (.*) data type in the (.*) data gr
   page.find(:css, "##{data_group}-#{data_type}-form + div.upload-messages").text.should have_content('uploaded successfully')
 end
 
+When /^I follow the "(.*)" link$/ do |link_text|
+  click_link link_text 
+end
+
+Then /^I should be on the dashboard administration page$/ do
+  h1 = page.find(:css, "h1")
+  h1.text.should == "Administer dashboards"
+end

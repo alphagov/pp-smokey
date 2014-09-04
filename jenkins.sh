@@ -14,7 +14,7 @@ bundle install --path "${HOME}/bundles/${JOB_NAME}" --deployment --quiet
 
 SMOKEY_PROFILE="default"
 
-if [ $PP_APP_DOMAIN = "staging.performance.service.gov.uk" ]; then
+if [ "$PP_APP_DOMAIN" == "staging.performance.service.gov.uk" ]; then
   SMOKEY_PROFILE="staging"
 fi
 

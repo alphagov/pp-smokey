@@ -1,6 +1,6 @@
 Feature: admin app
 
-  Scenario: Admin app is up on staging
+  Scenario: Admin app is up
     When I GET https://admin-beta.{PP_APP_DOMAIN}/
     Then I should receive an HTTP 302
 

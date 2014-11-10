@@ -2,6 +2,7 @@ source "https://rubygems.org"
 
 gem "capybara", "2.1.0"
 gem "capybara-mechanize", "1.1.0"
+gem "chunky_png", "1.3.3"
 gem "cucumber", "1.3.10"
 gem "nokogiri", "1.6.1"
 gem "rake", "10.1.1"

@@ -2,20 +2,29 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"time"
 )
+
+const baseURL string = "https://stagecraft.staging.performance.service.gov.uk/public/dashboards"
+
+type ResponseTimes []time.Duration
+
+func (d ResponseTimes) Len() int           { return len(d) }
+func (d ResponseTimes) Swap(i, j int)      { d[i], d[j] = d[j], d[i] }
+func (d ResponseTimes) Less(i, j int) bool { return d[i] < d[j] }
 
 type DashboardConfigs struct {
 	Items []DashboardConfigSummary
 }
 
+// Represents a dashboard config as returned in a JSON array.
 type DashboardConfigSummary struct {
 	Slug  string
 	Title string
@@ -169,46 +178,70 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	modules := 0
-	skipped := 0
-	errored := 0
-	flattenErrors := 0
+	var errors []error
+	var flattenErrors []error
+	// Sort these by key and report the worst.
+	var responseTimes ResponseTimes
+	responseTimesMap := map[time.Duration]string{}
+	var responseDiffs ResponseTimes
+	responseDiffsMap := map[time.Duration]string{}
 
 	for _, dashConf := range dashConfs.Items {
 		dash, err := FetchDashboardConfig(fmt.Sprintf("%s?slug=%s", baseURL, dashConf.Slug))
 		if err != nil {
 			log.Print(err.Error())
 		}
-		// For each module, print module URL
-		for _, module := range dash.Modules {
+
+		dashModules := ListDashboardModules(dash)
+		for _, module := range dashModules {
 			moduleURL, err := ConstructModuleURL(module)
 			if err != nil {
-				log.Printf("Skipping module because of: %s (%s)", err.Error(), dash.Slug)
-				skipped += 1
-			} else {
-				resp, err := http.Get(moduleURL)
-				if err != nil {
-					log.Printf("Error fetching module: %s (%s)", err.Error(), moduleURL)
-					errored += 1
-				} else if resp.StatusCode != http.StatusOK {
-					log.Printf("Got status %d for module %s", resp.StatusCode, moduleURL)
-					errored += 1
-				}
-				resp.Body.Close()
-				time.Sleep(time.Millisecond * 250)
-				resp, err = http.Get(moduleURL + "&flatten=true")
-				if err != nil {
-					log.Printf("Error fetching module: %s (%s)", err.Error(), moduleURL)
-					flattenErrors += 1
-				} else if resp.StatusCode != http.StatusOK {
-					log.Printf("Got status %d for module %s", resp.StatusCode, moduleURL)
-					flattenErrors += 1
-				}
-				resp.Body.Close()
-				time.Sleep(time.Millisecond * 250)
+				log.Print(err.Error())
+				continue
 			}
-			modules += 1
+			t1 := time.Now()
+			if err := validateResponse(moduleURL); err != nil {
+				errors = append(errors, err)
+			}
+			firstResp := time.Since(t1)
+			t2 := time.Now()
+			flattenURL := moduleURL + "&flatten=true"
+			if err := validateResponse(flattenURL); err != nil {
+				flattenErrors = append(flattenErrors, err)
+			}
+			secondResp := time.Since(t2)
+			responseTimes = append(responseTimes, firstResp)
+			responseTimes = append(responseTimes, secondResp)
+			responseTimesMap[firstResp] = moduleURL
+			responseTimesMap[secondResp] = flattenURL
+			responseDiffs = append(responseDiffs, t2.Sub(t1))
+			responseDiffsMap[t2.Sub(t1)] = moduleURL
 		}
 	}
-	log.Printf("Modules: %d, Skipped: %d, Errors: %d", modules, skipped, errored)
+	log.Printf("Errors: %d, Flatten errors: %d", len(errors), len(flattenErrors))
+	for _, err := range errors {
+		log.Print(err.Error())
+	}
+	for _, err := range flattenErrors {
+		log.Print(err.Error())
+	}
+
+	// Sort the response times and diffs, and report the slowest and worst regressions.
+	sort.Sort(responseTimes)
+	if len(responseTimes) > 10 {
+		responseTimes = responseTimes[len(responseTimes)-11:]
+	}
+	log.Print("Slowest responses...")
+	for _, v := range responseTimes {
+		log.Printf("%s took %s", responseTimesMap[v], v)
+	}
+
+	sort.Sort(responseDiffs)
+	if len(responseDiffs) > 10 {
+		responseDiffs = responseDiffs[len(responseDiffs)-11:]
+	}
+	log.Print("Worst flatten regressions...")
+	for _, v := range responseDiffs {
+		log.Printf("%s took %s longer", responseDiffsMap[v], v)
+	}
 }

@@ -134,9 +134,6 @@ func ConstructModuleURL(module Module) (string, error) {
 	if moduleParams.Limit != 0 {
 		params.Add("limit", strconv.Itoa(moduleParams.Limit))
 	}
-	if len(params) == 0 {
-		err = errors.New("Empty query string encoded for module")
-	}
 
 	moduleURL := baseURL
 	if len(params) > 0 {

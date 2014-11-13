@@ -7,8 +7,11 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
+	"runtime"
 	"sort"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -30,9 +33,28 @@ type DashboardConfigSummary struct {
 	Title string
 }
 
+type DashboardConfigResponse struct {
+	DashboardConfig DashboardConfig
+	Error           error
+}
+
 type DashboardConfig struct {
 	DashboardConfigSummary
 	Modules []Module
+}
+
+// Timing defines how we capture information about a particular Module's performance
+type Timing struct {
+	URL     string
+	Start   time.Time
+	Elapsed time.Duration
+	Error   error
+}
+
+// ModuleReport is a union of the Timing for the old version and the new flatten=true version
+type ModuleReport struct {
+	Module  Timing
+	Flatten Timing
 }
 
 type Module struct {
@@ -170,9 +192,23 @@ func validateResponse(moduleURL string) error {
 }
 
 func main() {
+	if os.Getenv("GOMAXPROCS") == "" {
+		// Use all available cores if not otherwise specified
+		runtime.GOMAXPROCS(runtime.NumCPU())
+	}
+
 	dashConfs, err := FetchDashboardConfigs(baseURL)
 	if err != nil {
 		log.Fatal(err.Error())
+	}
+
+	configs := produceConfigs(dashConfs)
+	modules := produceModules(configs)
+
+	// Arbitrary choice of workers to consume the modules
+	reports := make([]chan ModuleReport, 8)
+	for i, _ := range reports {
+		reports[i] = produceReports(modules)
 	}
 
 	var errors []error
@@ -183,38 +219,25 @@ func main() {
 	var responseDiffs ResponseTimes
 	responseDiffsMap := map[time.Duration]string{}
 
-	for _, dashConf := range dashConfs.Items {
-		dash, err := FetchDashboardConfig(fmt.Sprintf("%s?slug=%s", baseURL, dashConf.Slug))
-		if err != nil {
-			log.Print(err.Error())
+	for r := range merge(reports...) {
+		moduleTiming := r.Module
+		flattenTiming := r.Flatten
+		if err := moduleTiming.Error; err != nil {
+			errors = append(errors, err)
 		}
 
-		dashModules := ListDashboardModules(dash)
-		for _, module := range dashModules {
-			moduleURL, err := ConstructModuleURL(module)
-			if err != nil {
-				log.Print(err.Error())
-				continue
-			}
-			t1 := time.Now()
-			if err := validateResponse(moduleURL); err != nil {
-				errors = append(errors, err)
-			}
-			firstResp := time.Since(t1)
-			t2 := time.Now()
-			flattenURL := moduleURL + "&flatten=true"
-			if err := validateResponse(flattenURL); err != nil {
-				flattenErrors = append(flattenErrors, err)
-			}
-			secondResp := time.Since(t2)
-			responseTimes = append(responseTimes, firstResp)
-			responseTimes = append(responseTimes, secondResp)
-			responseTimesMap[firstResp] = moduleURL
-			responseTimesMap[secondResp] = flattenURL
-			responseDiffs = append(responseDiffs, t2.Sub(t1))
-			responseDiffsMap[t2.Sub(t1)] = moduleURL
+		if err := flattenTiming.Error; err != nil {
+			flattenErrors = append(flattenErrors, err)
 		}
+
+		responseTimes = append(responseTimes, moduleTiming.Elapsed)
+		responseTimes = append(responseTimes, flattenTiming.Elapsed)
+		responseTimesMap[moduleTiming.Elapsed] = moduleTiming.URL
+		responseTimesMap[flattenTiming.Elapsed] = flattenTiming.URL
+		responseDiffs = append(responseDiffs, flattenTiming.Start.Sub(moduleTiming.Start))
+		responseDiffsMap[flattenTiming.Start.Sub(moduleTiming.Start)] = moduleTiming.URL
 	}
+
 	log.Printf("Errors: %d, Flatten errors: %d", len(errors), len(flattenErrors))
 	for _, err := range errors {
 		log.Print(err.Error())
@@ -224,21 +247,106 @@ func main() {
 	}
 
 	// Sort the response times and diffs, and report the slowest and worst regressions.
-	sort.Sort(responseTimes)
+	sort.Sort(sort.Reverse(responseTimes))
 	if len(responseTimes) > 10 {
-		responseTimes = responseTimes[len(responseTimes)-11:]
+		responseTimes = responseTimes[0:10]
 	}
 	log.Print("Slowest responses...")
 	for _, v := range responseTimes {
 		log.Printf("%s took %s", responseTimesMap[v], v)
 	}
 
-	sort.Sort(responseDiffs)
+	sort.Sort(sort.Reverse(responseDiffs))
 	if len(responseDiffs) > 10 {
-		responseDiffs = responseDiffs[len(responseDiffs)-11:]
+		responseDiffs = responseDiffs[0:10]
 	}
 	log.Print("Worst flatten regressions...")
 	for _, v := range responseDiffs {
 		log.Printf("%s took %s longer", responseDiffsMap[v], v)
 	}
+}
+
+func produceConfigs(dashConfs DashboardConfigs) chan DashboardConfigResponse {
+	out := make(chan DashboardConfigResponse)
+	go func() {
+		defer close(out)
+		for _, dashConf := range dashConfs.Items {
+			dash, err := FetchDashboardConfig(fmt.Sprintf("%s?slug=%s", baseURL, dashConf.Slug))
+			out <- DashboardConfigResponse{dash, err}
+		}
+	}()
+	return out
+}
+
+func produceModules(configs <-chan DashboardConfigResponse) <-chan []Module {
+	out := make(chan []Module)
+	go func() {
+		defer close(out)
+		for res := range configs {
+			if res.Error != nil {
+				log.Print(res.Error.Error())
+			} else {
+				out <- ListDashboardModules(res.DashboardConfig)
+			}
+		}
+	}()
+	return out
+}
+
+func newTiming(URL string) Timing {
+	start := time.Now()
+	err := validateResponse(URL)
+	elapsed := time.Since(start)
+	return Timing{URL, start, elapsed, err}
+}
+
+func produceReports(modules <-chan []Module) chan ModuleReport {
+	out := make(chan ModuleReport)
+	go func() {
+		defer close(out)
+
+		for dashModules := range modules {
+			for _, module := range dashModules {
+				moduleURL, err := ConstructModuleURL(module)
+				if err != nil {
+					log.Print(err.Error())
+					continue
+				}
+
+				moduleTiming := newTiming(moduleURL)
+				flattenTiming := newTiming(moduleURL + "&flatten=true")
+
+				out <- ModuleReport{
+					moduleTiming,
+					flattenTiming}
+			}
+		}
+	}()
+	return out
+}
+
+func merge(reports ...chan ModuleReport) <-chan ModuleReport {
+	var wg sync.WaitGroup
+	out := make(chan ModuleReport)
+
+	// Start an output goroutine for each input channel in cs.  output
+	// copies values from c to out until c is closed, then calls wg.Done.
+	output := func(c <-chan ModuleReport) {
+		for n := range c {
+			out <- n
+		}
+		wg.Done()
+	}
+	wg.Add(len(reports))
+	for _, c := range reports {
+		go output(c)
+	}
+
+	// Start a goroutine to close out once all the output goroutines are
+	// done.  This must start after the wg.Add call.
+	go func() {
+		wg.Wait()
+		close(out)
+	}()
+	return out
 }

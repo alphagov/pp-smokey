@@ -27,7 +27,7 @@ type DashboardConfigs struct {
 	Items []DashboardConfigSummary
 }
 
-// Represents a dashboard config as returned in a JSON array.
+// DashboardConfigSummary represents a dashboard config as returned in a JSON array.
 type DashboardConfigSummary struct {
 	Slug  string
 	Title string
@@ -43,18 +43,19 @@ type DashboardConfig struct {
 	Modules []Module
 }
 
-// Timing defines how we capture information about a particular Module's performance
-type Timing struct {
-	URL     string
-	Start   time.Time
-	Elapsed time.Duration
-	Error   error
+// Report defines how we capture information about a particular Module's performance.
+type Report struct {
+	URL      string
+	Start    time.Time
+	Elapsed  time.Duration
+	BodySize int
+	Error    error
 }
 
-// ModuleReport is a union of the Timing for the old version and the new flatten=true version
+// ModuleReport is a union of the Timing for the old version and the new flatten=true version.
 type ModuleReport struct {
-	Module  Timing
-	Flatten Timing
+	Module  Report
+	Flatten Report
 }
 
 type Module struct {
@@ -179,16 +180,15 @@ func ListDashboardModules(dash DashboardConfig) []Module {
 	return modules
 }
 
-func validateResponse(moduleURL string) error {
+func fetchResponse(moduleURL string) (*http.Response, error) {
 	resp, err := http.Get(moduleURL)
-	defer resp.Body.Close()
 	if err != nil {
-		return fmt.Errorf("Error fetching module: %s (%s)", err.Error(), moduleURL)
+		return resp, fmt.Errorf("Error fetching module: %s (%s)", err.Error(), moduleURL)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Got status %d for module %s", resp.StatusCode, moduleURL)
+		return resp, fmt.Errorf("Got status %d for module %s", resp.StatusCode, moduleURL)
 	}
-	return nil
+	return resp, nil
 }
 
 func main() {
@@ -206,36 +206,43 @@ func main() {
 	modules := produceModules(configs)
 
 	// Arbitrary choice of workers to consume the modules
-	reports := make([]chan ModuleReport, 8)
+	reports := make([]chan ModuleReport, 4)
 	for i, _ := range reports {
 		reports[i] = produceReports(modules)
 	}
 
 	var errors []error
 	var flattenErrors []error
-	// Sort these by key and report the worst.
+
+	// Sort response times and sizes and report the worst.
 	var responseTimes ResponseTimes
 	responseTimesMap := map[time.Duration]string{}
 	var responseDiffs ResponseTimes
 	responseDiffsMap := map[time.Duration]string{}
+	var responseSizeDiffs sort.IntSlice
+	responseSizeDiffsMap := map[int]string{}
 
 	for r := range merge(reports...) {
-		moduleTiming := r.Module
-		flattenTiming := r.Flatten
-		if err := moduleTiming.Error; err != nil {
+
+		moduleReport := r.Module
+		flattenReport := r.Flatten
+		if err := moduleReport.Error; err != nil {
 			errors = append(errors, err)
 		}
-
-		if err := flattenTiming.Error; err != nil {
+		if err := flattenReport.Error; err != nil {
 			flattenErrors = append(flattenErrors, err)
 		}
 
-		responseTimes = append(responseTimes, moduleTiming.Elapsed)
-		responseTimes = append(responseTimes, flattenTiming.Elapsed)
-		responseTimesMap[moduleTiming.Elapsed] = moduleTiming.URL
-		responseTimesMap[flattenTiming.Elapsed] = flattenTiming.URL
-		responseDiffs = append(responseDiffs, flattenTiming.Start.Sub(moduleTiming.Start))
-		responseDiffsMap[flattenTiming.Start.Sub(moduleTiming.Start)] = moduleTiming.URL
+		responseTimes = append(responseTimes, moduleReport.Elapsed)
+		responseTimes = append(responseTimes, flattenReport.Elapsed)
+		responseTimesMap[moduleReport.Elapsed] = moduleReport.URL
+		responseTimesMap[flattenReport.Elapsed] = flattenReport.URL
+
+		responseDiffs = append(responseDiffs, flattenReport.Start.Sub(moduleReport.Start))
+		responseDiffsMap[flattenReport.Start.Sub(moduleReport.Start)] = moduleReport.URL
+
+		responseSizeDiffs = append(responseSizeDiffs, flattenReport.BodySize-moduleReport.BodySize)
+		responseSizeDiffsMap[flattenReport.BodySize-moduleReport.BodySize] = moduleReport.URL
 	}
 
 	log.Printf("Errors: %d, Flatten errors: %d", len(errors), len(flattenErrors))
@@ -263,6 +270,15 @@ func main() {
 	log.Print("Worst flatten regressions...")
 	for _, v := range responseDiffs {
 		log.Printf("%s took %s longer", responseDiffsMap[v], v)
+	}
+
+	sort.Sort(sort.Reverse(responseSizeDiffs))
+	if len(responseSizeDiffs) > 10 {
+		responseSizeDiffs = responseSizeDiffs[0:10]
+	}
+	log.Print("Largest response size increases...")
+	for _, v := range responseSizeDiffs {
+		log.Printf("%s was %d bytes larger", responseSizeDiffsMap[v], v)
 	}
 }
 
@@ -293,11 +309,24 @@ func produceModules(configs <-chan DashboardConfigResponse) <-chan []Module {
 	return out
 }
 
-func newTiming(URL string) Timing {
+func newReport(URL string) Report {
 	start := time.Now()
-	err := validateResponse(URL)
+	resp, err := fetchResponse(URL)
+	defer resp.Body.Close()
 	elapsed := time.Since(start)
-	return Timing{URL, start, elapsed, err}
+	report := Report{
+		URL:     URL,
+		Start:   start,
+		Elapsed: elapsed,
+		Error:   err,
+	}
+
+	// Only calculate response size if there is no error.
+	if err == nil {
+		bytes, _ := ioutil.ReadAll(resp.Body)
+		report.BodySize = len(bytes)
+	}
+	return report
 }
 
 func produceReports(modules <-chan []Module) chan ModuleReport {
@@ -313,12 +342,12 @@ func produceReports(modules <-chan []Module) chan ModuleReport {
 					continue
 				}
 
-				moduleTiming := newTiming(moduleURL)
-				flattenTiming := newTiming(moduleURL + "&flatten=true")
+				moduleReport := newReport(moduleURL)
+				flattenReport := newReport(moduleURL + "&flatten=true")
 
 				out <- ModuleReport{
-					moduleTiming,
-					flattenTiming}
+					moduleReport,
+					flattenReport}
 			}
 		}
 	}()

@@ -252,7 +252,9 @@ func main() {
 		}
 
 		if flattenReport.Error != nil {
-			flattenErrors = append(flattenErrors, flattenReport.Error)
+			if flattenReport.Error != InvalidFlattenError {
+				flattenErrors = append(flattenErrors, flattenReport.Error)
+			}
 		} else {
 			responseTimes = append(responseTimes, flattenReport.Elapsed)
 			responseTimesMap[flattenReport.Elapsed] = flattenReport.URL

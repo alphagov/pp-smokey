@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -14,6 +15,12 @@ import (
 	"sync"
 	"time"
 )
+
+var InvalidFlattenError error
+
+func init() {
+	InvalidFlattenError = errors.New("URL has no group_by params so cannot be flattened")
+}
 
 const baseURL string = "https://stagecraft.staging.performance.service.gov.uk/public/dashboards"
 
@@ -114,12 +121,11 @@ func FetchDashboardConfig(URL string) (DashboardConfig, error) {
 	return dashboard, err
 }
 
-func ConstructModuleURL(module Module) (string, error) {
-	var err error
+func constructModuleURL(module Module, flatten bool) (string, error) {
 
 	// TODO(mrc): use net/url to create the URL.
 	baseURL := fmt.Sprintf(
-		"https://www.staging.performance.service.gov.uk/data/%s/%s?",
+		"https://www.staging.performance.service.gov.uk/data/%s/%s",
 		module.Datasource.DataGroup,
 		module.Datasource.DataType,
 	)
@@ -151,6 +157,15 @@ func ConstructModuleURL(module Module) (string, error) {
 		}
 	}
 
+	// Optionally add "flatten=true" if group_by is present.
+	if flatten {
+		if _, ok := params["group_by"]; ok {
+			params.Add("flatten", "true")
+		} else {
+			return "", InvalidFlattenError
+		}
+	}
+
 	for _, filter := range moduleParams.FilterBy {
 		params.Add("filter_by", filter)
 	}
@@ -160,9 +175,9 @@ func ConstructModuleURL(module Module) (string, error) {
 
 	moduleURL := baseURL
 	if len(params) > 0 {
-		moduleURL = moduleURL + params.Encode()
+		moduleURL = moduleURL + "?" + params.Encode()
 	}
-	return moduleURL, err
+	return moduleURL, nil
 }
 
 // Returns an array of modules, including any tabbed modules, from the dashboard config.
@@ -336,14 +351,22 @@ func produceReports(modules <-chan []Module) chan ModuleReport {
 
 		for dashModules := range modules {
 			for _, module := range dashModules {
-				moduleURL, err := ConstructModuleURL(module)
+
+				var moduleReport Report
+				moduleURL, err := constructModuleURL(module, false)
 				if err != nil {
-					log.Print(err.Error())
-					continue
+					moduleReport = Report{Error: err}
+				} else {
+					moduleReport = newReport(moduleURL)
 				}
 
-				moduleReport := newReport(moduleURL)
-				flattenReport := newReport(moduleURL + "&flatten=true")
+				var flattenReport Report
+				flattenURL, err := constructModuleURL(module, true)
+				if err != nil {
+					flattenReport = Report{Error: err}
+				} else {
+					flattenReport = newReport(flattenURL)
+				}
 
 				out <- ModuleReport{
 					moduleReport,

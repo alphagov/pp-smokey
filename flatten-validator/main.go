@@ -234,30 +234,36 @@ func main() {
 	responseTimesMap := map[time.Duration]string{}
 	var responseDiffs ResponseTimes
 	responseDiffsMap := map[time.Duration]string{}
-	var responseSizeDiffs sort.IntSlice
-	responseSizeDiffsMap := map[int]string{}
+	var responseSizes sort.IntSlice
+	responseSizesMap := map[int]string{}
 
 	for r := range merge(reports...) {
 
 		moduleReport := r.Module
 		flattenReport := r.Flatten
-		if err := moduleReport.Error; err != nil {
-			errors = append(errors, err)
+
+		if moduleReport.Error != nil {
+			errors = append(errors, moduleReport.Error)
+		} else {
+			responseTimes = append(responseTimes, moduleReport.Elapsed)
+			responseTimesMap[moduleReport.Elapsed] = moduleReport.URL
+			responseSizes = append(responseSizes, moduleReport.BodySize)
+			responseSizesMap[moduleReport.BodySize] = moduleReport.URL
 		}
-		if err := flattenReport.Error; err != nil {
-			flattenErrors = append(flattenErrors, err)
+
+		if flattenReport.Error != nil {
+			flattenErrors = append(flattenErrors, flattenReport.Error)
+		} else {
+			responseTimes = append(responseTimes, flattenReport.Elapsed)
+			responseTimesMap[flattenReport.Elapsed] = flattenReport.URL
+			responseSizes = append(responseSizes, flattenReport.BodySize)
+			responseSizesMap[flattenReport.BodySize] = flattenReport.URL
 		}
 
-		responseTimes = append(responseTimes, moduleReport.Elapsed)
-		responseTimes = append(responseTimes, flattenReport.Elapsed)
-		responseTimesMap[moduleReport.Elapsed] = moduleReport.URL
-		responseTimesMap[flattenReport.Elapsed] = flattenReport.URL
-
-		responseDiffs = append(responseDiffs, flattenReport.Start.Sub(moduleReport.Start))
-		responseDiffsMap[flattenReport.Start.Sub(moduleReport.Start)] = moduleReport.URL
-
-		responseSizeDiffs = append(responseSizeDiffs, flattenReport.BodySize-moduleReport.BodySize)
-		responseSizeDiffsMap[flattenReport.BodySize-moduleReport.BodySize] = moduleReport.URL
+		if moduleReport.Error == nil && flattenReport.Error == nil {
+			responseDiffs = append(responseDiffs, flattenReport.Start.Sub(moduleReport.Start))
+			responseDiffsMap[flattenReport.Start.Sub(moduleReport.Start)] = moduleReport.URL
+		}
 	}
 
 	log.Printf("Errors: %d, Flatten errors: %d", len(errors), len(flattenErrors))
@@ -287,13 +293,13 @@ func main() {
 		log.Printf("%s took %s longer", responseDiffsMap[v], v)
 	}
 
-	sort.Sort(sort.Reverse(responseSizeDiffs))
-	if len(responseSizeDiffs) > 10 {
-		responseSizeDiffs = responseSizeDiffs[0:10]
+	sort.Sort(sort.Reverse(responseSizes))
+	if len(responseSizes) > 10 {
+		responseSizes = responseSizes[0:10]
 	}
-	log.Print("Largest response size increases...")
-	for _, v := range responseSizeDiffs {
-		log.Printf("%s was %d bytes larger", responseSizeDiffsMap[v], v)
+	log.Print("Largest response sizes...")
+	for _, v := range responseSizes {
+		log.Printf("%s was %d bytes", responseSizesMap[v], v)
 	}
 }
 

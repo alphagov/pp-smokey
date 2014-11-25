@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	vegeta "github.com/tsenart/vegeta/lib"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"time"
 )
 
 // TODO just learn how to do string substition in Go instead of all this map madness
@@ -118,5 +120,48 @@ func main() {
 	}
 
 	fmt.Println(dashboardModulesList)
+
+	// Now start attacking module urls
+	rate := uint64(100) // per second
+	duration := 4 * time.Second
+
+	var targets = []*vegeta.Target{}
+	for dashboardSlug, moduleSlugs := range dashboardModulesList {
+		for _, moduleSlug := range moduleSlugs {
+			fmt.Println("Priming:", envURL+"/"+dashboardSlug+"/"+moduleSlug)
+			targets = append(targets, &vegeta.Target{
+				Method: "GET",
+				URL:    envURL + "/" + dashboardSlug + "/" + moduleSlug,
+			})
+		}
+	}
+	targeter := vegeta.NewStaticTargeter(targets...)
+
+	attacker := vegeta.NewAttacker()
+
+	var results vegeta.Results
+	for res := range attacker.Attack(targeter, rate, duration) {
+		fmt.Println("attacking", targeter.URL, rate, duration)
+		results = append(results, res)
+	}
+
+	metrics := vegeta.NewMetrics(results)
+	// fmt.Printf("99th percentile: %s\n", metrics.Latencies.P99)
+	fmt.Println("Requests\t[total]\t%d\n", metrics.Requests)
+	fmt.Println("Duration\t[total, attack, wait]\t%s, %s, %s\n", metrics.Duration+metrics.Wait, metrics.Duration, metrics.Wait)
+	fmt.Println("Latencies\t[mean, 50, 95, 99, max]\t%s, %s, %s, %s, %s\n",
+		metrics.Latencies.Mean, metrics.Latencies.P50, metrics.Latencies.P95, metrics.Latencies.P99, metrics.Latencies.Max)
+	fmt.Println("Bytes In\t[total, mean]\t%d, %.2f\n", metrics.BytesIn.Total, metrics.BytesIn.Mean)
+	fmt.Println("Bytes Out\t[total, mean]\t%d, %.2f\n", metrics.BytesOut.Total, metrics.BytesOut.Mean)
+	fmt.Println("Success\t[ratio]\t%.2f%%\n", metrics.Success*100)
+	fmt.Println("Status Codes\t[code:count]\t")
+
+	for code, count := range metrics.StatusCodes {
+		fmt.Println("%s:%d  ", code, count)
+	}
+	fmt.Println("\nError Set:")
+	for err := range metrics.Errors {
+		fmt.Println(err)
+	}
 
 }

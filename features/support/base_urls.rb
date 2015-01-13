@@ -1,7 +1,3 @@
-def admin_base_url
-  application_base_url('admin')
-end
-
 def app_domain
   ENV["PP_APP_DOMAIN"] || "preview.performance.service.gov.uk"
 end
@@ -20,7 +16,6 @@ end
 
 def application_base_url(app_name)
   case app_name
-  when 'admin' then "https://admin.#{app_domain}/"
   when 'signon' then "https://signon.#{govuk_app_domain}/"
   else
     raise "Application '#{app_name}' not recognised, unable to boot it up"

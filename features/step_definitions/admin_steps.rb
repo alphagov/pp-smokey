@@ -42,6 +42,10 @@ When /^I follow the "(.*)" link$/ do |link_text|
   click_link link_text 
 end
 
+When /^I follow the Administer dashboards link$/ do
+  page.find(:css, "[href='/administer-dashboards']").click
+end
+
 Then /^I should be on the dashboard administration page$/ do
   h1 = page.find(:css, "h1")
   h1.text.should == "Administer dashboards"

@@ -28,7 +28,7 @@ When /^I follow the "(.*)" link$/ do |link_text|
 end
 
 When /^I follow the Administer dashboards link$/ do
-  page.find(:css, "[href='/administer-dashboards']").click
+  page.find(:css, "[href='/admin/dashboards']").click
 end
 
 Then /^I should be on the dashboard administration page$/ do

@@ -8,6 +8,16 @@ Use the provided script:
 ./run_tests.sh
 ```
 
+### In development:
+
+1. Deploy the branch you want to test to preview.
+2. Used the provided script:
+
+```bash
+SIGNON_USERNAME=See manual for signon credentials SIGNON_PASSWORD=See manual for signon credentials ./run_tests.sh
+```
+
+
 ## Environment
 
 By default these tests run against the Performance Platform's preview environment.

@@ -35,5 +35,5 @@ Feature: admin app
   @not_on_staging
   Scenario: Can see the dashboard administration page
     When I try to login to Signon from https://admin-beta.{PP_APP_DOMAIN}/
-    And I follow the Administer dashboards link
+    And I follow the Your dashboards link
     Then I should be on the dashboard administration page

@@ -10,7 +10,7 @@ Feature: stagecraft
   @normal
   Scenario: I can access Stagecraft admin UI with a trailing slash
     When I GET https://stagecraft.{PP_FULL_APP_DOMAIN}/admin/
-    Then I should receive an HTTP 200
+    Then I should receive an HTTP 302 redirect to https://stagecraft.{PP_FULL_APP_DOMAIN}/admin/login/?next=/admin/
 
   @normal
   Scenario: I can access Stagecraft admin UI without a trailing slash

@@ -9,6 +9,7 @@ end
 
 When /^I (GET|POST|PUT|DELETE) (.*)$/ do |method, url|
   url = replace_env_host(url)
+  print url
   @response = do_http_request(url, method.downcase.to_sym, options) do |response, request, result|
     response
   end
